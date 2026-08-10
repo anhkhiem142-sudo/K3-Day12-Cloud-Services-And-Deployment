@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +34,27 @@ class Settings(BaseSettings):
     chỉ phát hiện ra khi ai đó đã gọi API miễn phí bằng khóa mặc định đó.
     Không mặc định = fail fast ngay lúc khởi động.
     """
+
+    port: int = 8000
+    agent_api_key: str
+    redis_url: str = "redis://localhost:6379/0"
+    rate_limit_per_minute: int = 10
+    monthly_budget_usd: float = 10.0
+    log_level: str = "INFO"
+
+    @field_validator("agent_api_key")
+    @classmethod
+    def validate_agent_api_key(cls, value: str) -> str:
+        """Reject empty and placeholder secrets before the service starts."""
+        normalized = value.strip()
+        placeholders = {
+            "changeme",
+            "doi-thanh-khoa-cua-rieng-ban",
+            "your-api-key",
+        }
+        if not normalized or normalized.lower() in placeholders:
+            raise ValueError("AGENT_API_KEY must be set to a non-placeholder value")
+        return normalized
 
     model_config = SettingsConfigDict(
         env_file=".env",
